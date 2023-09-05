@@ -1,0 +1,41 @@
+version: "3.9"
+
+volumes:
+  postgres-data:
+    external: true
+services:
+  backend:
+    build:
+      context: ./metaMorphedProject
+      dockerfile: ./Dockerfile.dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./metaMorphedProject:/app
+    depends_on:
+      - db
+    environment:
+      - CHATGPT_API_KEY=${CHATGPT_API_KEY}
+
+  frontend:
+    build:
+      context: ./metamorphedreactapp
+      dockerfile: ./Dockerfile.dev
+    ports:
+      - "3003:3003"
+    volumes:
+      - ./metamorphedreactapp:/app
+    environment:
+      NODE_ENV: development
+      REACT_APP_BACKEND: http://localhost:8000
+      REACT_APP_THIRD_PARTY_SERVICE: https://api.yelp.com/v3
+
+  db:
+    image: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydatabase
+
