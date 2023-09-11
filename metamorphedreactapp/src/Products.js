@@ -7,6 +7,7 @@ import Container from 'react-bootstrap/Container'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import { useLocation, Link } from "react-router-dom";
+import Form from 'react-bootstrap/Form';
 
 function Products() {
     const [products, setProducts] = useState([])
@@ -79,27 +80,21 @@ function Products() {
         }
         const response = await fetch(url, fetchConfig)
         if (response.ok) {
-            const data = response.json()
-            console.log(data)
-            setTemplates(data)
+            const data = await response.json()
+            var templatesList = []
+            for (const template of Object.values(data['templates'])) {
+                templatesList.push(template)
+            }
+            setTemplates(templatesList)
         }
     }
 
     useEffect(() => {
         getProducts()
-    }, []);
-
-    useEffect(() => {
         getCategories()
-    }, []);
-
-    useEffect(() => {
         getBrands()
-    }, [])
-
-    useEffect(() => {
         getTemplates()
-    }, [])
+    }, []);
     
     useEffect(() => {
         if (location['state']) {
@@ -157,7 +152,7 @@ function Products() {
 
     function hasVariants(variants) {
         if (variants.length > 1) {
-            return true
+            return false // Set to True if enabling variants
         }
         return false
     }
@@ -317,11 +312,23 @@ function Products() {
         </Table>   
         )}
 
-    function BulkEditLink() {
+    function ProductTemplateLink() {
         return (
             <Link to='/productTemplate' state={{products: products, brands: brands, categories: categories}}>
-            <h2>Product Template</h2>
+            <h3>Product Template</h3>
             </Link>
+        )
+    }
+
+    function ProductTemplateDropDown() {
+        console.log('TEMPLATES:', templates)
+        return (
+            <Form.Select>
+                <option>Select Product Template to Apply</option>
+                {templates.map((template)=> (
+                    <option>{template['template_name']}</option>
+                ))}
+            </Form.Select>
         )
     }
     
@@ -334,15 +341,18 @@ function Products() {
             </Row>
             <Row>
                 <Col>
-                    <BulkEditLink/>
+                    <ProductTemplateLink/>
                 </Col>
                 <Col style = {{textAlign: 'right'}}>
                     <Link to='/filters' state={{brands: brands, categories: categories}}>
                         <h2>Filters</h2>
                     </Link>
-                </Col>
-                <Col>
                     <Button variant="outline-dark" onClick={()=> {setFiltersApplied(false); setFilteredBrands({}); setFilteredCategories({}); setFilteredVisibilities({})}}>Clear Filters</Button>
+                </Col>
+            </Row>
+            <Row>
+                <Col>
+                    <ProductTemplateDropDown/>
                 </Col>
             </Row>
             <Row>

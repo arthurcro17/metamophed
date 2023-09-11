@@ -12,7 +12,9 @@ from django.db import IntegrityError
 from django.core import serializers
 
 
-# Function called when app is downloaded on BigCommerce. Function requests an access_token from bigCommerce, then creates an instance of store, user, and storeuser, and redirects to the main page ('index')
+# Function called when app is downloaded on BigCommerce. 
+# Function requests an access_token from bigCommerce, then creates an instance of store, user, and storeuser.
+# Function then redirects to the main page
 def auth_callback(request):
     code = request.GET['code']
     context = request.GET['context']
@@ -57,7 +59,9 @@ def auth_callback(request):
     return HttpResponseRedirect(settings.FRONT_END_URL)
 
 
-
+# Function called when app is loaded from bigCommerce store
+# Function verify's user using jwt
+# Function then redirects to the main page
 def load(request):
     payload = request.GET['signed_payload_jwt']
     try:
@@ -127,6 +131,8 @@ def remove_user(request):
     return HttpResponse('Deleted', status=204)
 
 
+# Function checks session to see if user is logged in
+# Function then renders the main page, 
 def index(request):
     storeuser = StoreUser.objects.filter(id=request.session.get('storeuserid', None)).first()
     if storeuser is None:
@@ -148,13 +154,6 @@ def index(request):
         'api_url': client.connection.host
     }
     return render(request, 'index.html', context)
-
-
-def instructions(request):
-    if not settings.DEBUG:
-        return HttpResponse("Forbidden - instructions only visible in debug mode")
-
-    return render(request, 'instructions.html', {})
 
 
 def jwt_error(e):
@@ -232,31 +231,33 @@ def get_AI_product_data(request):
     storeuser = StoreUser.objects.filter(id=request.session.get('storeuserid', None)).first()
     if storeuser is None:
         return JsonResponse({"response": "Not logged in!"})
-    data = json.loads(request.GET.get('data'))
+    data = json.loads(request.GET.get("data"))
+    print("DATA", data)
     model = "gpt-3.5-turbo"
     key=os.environ["CHATGPT_API_KEY"]
     system_prompt = """
                     You are an experienced E-Commerce copywriter. Your task is to provide improved product attributes using the given data. 
-                    You should generate 'new' data based on the 'old' data, the provided 'prompt', and the 'additional_product_info'. 
-                    Your output should be an object with one less key than the input, excluding the 'additional_product_info' key.
+                    You should generate "new" data based on the "old" data, the provided "prompt", and the "additional_product_info". 
+                    Your output should be an object with one less key than the input, excluding the "additional_product_info" key. 
+            
                        
-    Example Input 1: {'name': {'old': old name, 'prompt': 'create an improved product name'}, 
-                    'description': {'old': old description, 'prompt': 'create an improved description'},
-                    'page_title': {'old': old page title, 'prompt': 'create an improved page title'},
-                    'meta_keywords': {'old': old meta keywords, 'prompt': 'create improved meta keywords'},
-                    'meta_description': {'old': old meta description, 'prompt': 'create an improved meta description'},
-                    'additional_product_info': {'brand': 'example brand', 'categories':['example category 1', 'example category 2']}}
+    Example Input 1: {"name": {"old": old name, "prompt": "create an improved product name"}, 
+                    "description": {"old": old description, "prompt": "create an improved description"},
+                    "page_title": {"old": old page title, "prompt": "create an improved page title"},
+                    "meta_keywords": {"old": old meta keywords, "prompt": "create improved meta keywords"},
+                    "meta_description": {"old": old meta description, "prompt": "create an improved meta description"},
+                    "additional_product_info": {"brand": "example brand", "categories":["example category 1", "example category 2"]}}
                     
-    Example Output 1: {'name': {'new': 'new improved product name'},
-                    'description': {'new': 'new improved product description'},
-                    'page_title': {'new': 'new improved product page title'},
-                    'meta_keywords': {'new': 'new improved product meta keywords'},
-                    'meta_description': {'new': 'new improved product meta description'}}
+    Example Output 1: {"name": {"new": "new improved product name"},
+                    "description": {"new": "new improved product description"},
+                    "page_title": {"new": "new improved product page title"},
+                    "meta_keywords": {"new": "new improved product meta keywords"},
+                    "meta_description": {"new": "new improved product meta description"}}
                     
-    Example Input 2:  {'name': {'old': old name, 'prompt': 'create an improved product name'}, 
-                    'additional_product_info': {'brand': 'example brand', 'categories':['example category 1', 'example category 2'], 'description': 'example description about the product'}}
+    Example Input 2:  {"name": {"old": old name, "prompt": "create an improved product name"}, 
+                    "additional_product_info": {"brand": "example brand", "categories":["example category 1", "example category 2"], "description": "example description about the product"}}
                     
-    Example Output 2: {'name': {'new': 'new improved product name'}}"""
+    Example Output 2: {"name": {"new": "new improved product name"}}"""
                     
     user_prompt = str(data)
     openai.api_key = key
@@ -268,14 +269,14 @@ def get_AI_product_data(request):
         ],
         temperature=0.0
     )
-    output_string = completion['choices'][0].message.content
-    print('output string', output_string)                         
+    output_string = completion["choices"][0].message.content
+    print("output string", output_string)                         
     output_dict = json.loads(output_string.replace("'", '"'))
     new_attributes = {}
     for key, value in output_dict.items():
-        if 'new' in value:
-            new_attributes[key] = {'new': value['new']}
-    return JsonResponse({'new_attributes': new_attributes})
+        if "new" in value:
+            new_attributes[key] = {"new": value["new"]}
+    return JsonResponse({"new_attributes": new_attributes})
 
 def product_template(request, templateID = None):
     storeuser = StoreUser.objects.filter(id=request.session.get('storeuserid', None)).first()
