@@ -19,13 +19,14 @@ function Products() {
     const [brands, setBrands] = useState({})
     const location = useLocation({state:{}})
     const [filtersApplied, setFiltersApplied] = useState(false)
-    const [filteredBrands, setFilteredBrands] = useState({})
-    const [filteredCategories, setFilteredCategories] = useState({})
-    const [filteredVisibilities, setFilteredVisibilities] = useState({})
+    const [filteredBrands, setFilteredBrands] = useState(new Set())
+    const [filteredCategories, setFilteredCategories] = useState(new Set())
+    const [filteredVisibilities, setFilteredVisibilities] = useState(new Set())
+    const [filteredProductIDs, setFilteredProductIDs] = useState(new Set())
     const [selectedProductsIDs, setSelectedProductsIDs] = useState(new Set())
-    const [selectedProducts, setSelectedProducts] = useState([])
     const [templates, setTemplates] = useState([])
     const [selectedTemplateID, setSelectedTemplateID] = useState()
+
 
     async function getCategories() {
         const url = `${process.env.REACT_APP_BACKEND}/get_categories/`
@@ -81,11 +82,7 @@ function Products() {
         const response = await fetch(url, fetchConfig)
         if (response.ok) {
             const data = await response.json()
-            var templatesList = []
-            for (const template of Object.values(data['templates'])) {
-                templatesList.push(template)
-            }
-            setTemplates(templatesList)
+            setTemplates(data['templates'])
         }
     }
 
@@ -216,17 +213,24 @@ function Products() {
         }}
 
     function productFilter(product) {
+        var newSet = filteredProductIDs
         if (!filtersApplied) {
+            setFilteredProductIDs(newSet.add(product.id))
             return true
         }
         if (!filteredVisibilities.has(product.is_visible)) {
+            newSet.delete(product.id)
+            setFilteredProductIDs(newSet)
             return false
         }
         if (!filteredBrands.has(product.brand_id)) {
+            newSet.delete(product.id)
+            setFilteredProductIDs(newSet)
             return false
         }
         for (const category of product.categories) {
             if (filteredCategories.has(category)) {
+                setFilteredProductIDs(newSet.add(product.id))
                 return true
                 }
         }
@@ -239,14 +243,15 @@ function Products() {
             newSet.add(id)
         }
         setSelectedProductsIDs(newSet)
-        const selectedProductsList = products.filter((product) => selectedProductsIDs.has(product.id))
-        setSelectedProducts(selectedProductsList)
     }
 
-    function TemplateSelection() {
-        return (
-            <></>
-        )
+    function selectAllProducts() {
+        if (selectedProductsIDs.size === filteredProductIDs.size) {
+            setSelectedProductsIDs(new Set())
+        }
+        else {
+            setSelectedProductsIDs(filteredProductIDs)
+        }
     }
 
     function ProductTable(props) {
@@ -254,7 +259,9 @@ function Products() {
         <Table>
             <thead>
                 <tr>
-                    <th></th>
+                    <th>
+                        <input className="form-check-input" type="checkbox" style={{ height:"26px", width:"26px" }} onClick={(e) => selectAllProducts()} defaultChecked={selectedProductsIDs.size===filteredProductIDs.size}/>
+                    </th>
                     <th></th>
                     <th>Image</th>
                     <th>Product</th>
@@ -321,14 +328,37 @@ function Products() {
     }
 
     function ProductTemplateDropDown() {
-        console.log('TEMPLATES:', templates)
         return (
-            <Form.Select>
-                <option>Select Product Template to Apply</option>
-                {templates.map((template)=> (
-                    <option>{template['template_name']}</option>
-                ))}
-            </Form.Select>
+            <Form>
+                <Form.Group>
+                    <Form.Select value={selectedTemplateID} onChange={(e) => (setSelectedTemplateID(e.target.value))}>
+                        <option>Product Templates</option>
+                        {Object.entries(templates).map(([id,template]) => (
+                            <option key={id} value={id}>{template['template_name']}</option>
+                        ))}
+                    </Form.Select>
+                </Form.Group>
+            </Form>
+        )
+    }
+
+    function updateProducts() {
+        const url = `${process.env.REACT_APP_BACKEND}/update_products/`;
+        const fetchConfig = {
+            credentials: 'include',
+        }
+        for (const id of selectedProductsIDs) {
+            console.log('ID: ', id)
+        }
+        console.log('PRODUCTS: ', products)
+        console.log('SELECTED TEMPLATE ID: ', selectedTemplateID)
+        console.log('TEMPLATES: ', templates)
+        console.log('PRODUCTS: ', products)
+    }
+
+    function ApplyTemplate() {
+        return (
+            <Button variant="success" onClick={()=> {updateProducts()}}>Apply Template</Button>
         )
     }
     
@@ -347,12 +377,18 @@ function Products() {
                     <Link to='/filters' state={{brands: brands, categories: categories}}>
                         <h2>Filters</h2>
                     </Link>
-                    <Button variant="outline-dark" onClick={()=> {setFiltersApplied(false); setFilteredBrands({}); setFilteredCategories({}); setFilteredVisibilities({})}}>Clear Filters</Button>
+                    <Button variant="outline-dark" onClick={()=> {setFiltersApplied(false); setFilteredBrands(new Set()); setFilteredCategories(new Set()); setFilteredVisibilities(new Set())}}>Clear Filters</Button>
+                </Col>
+            </Row>
+            <Row style={{marginTop: '20px', textAlign:'left'}}>
+                <Col className='col-2'>Select a Template to Apply to Products:</Col>
+                <Col className='col-5' style={{textAlign:'left'}}>
+                    <ProductTemplateDropDown/>
                 </Col>
             </Row>
             <Row>
-                <Col>
-                    <ProductTemplateDropDown/>
+                <Col style={{textAlign: 'right', marginTop:'20px'}}>
+                    <ApplyTemplate/>
                 </Col>
             </Row>
             <Row>

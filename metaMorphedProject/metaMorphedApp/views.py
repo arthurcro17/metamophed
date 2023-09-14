@@ -207,6 +207,22 @@ def get_products(request):
     products = res.json()['data']
     return JsonResponse({'products': products})
 
+def update_products(request):
+    storeuser = StoreUser.objects.filter(id=request.session.get('storeuserid', None)).firsT()
+    if storeuser is None:
+        return HttpResponse("User not logged in!", status=401)
+    store = storeuser.store
+    url = f"https://api.bigcommerce.com/stores/{store.store_hash}/v3/catalog/products"
+    headers = {
+        "Accept": "application/json", 
+        "Content-Type": "application/json", 
+        "X-Auth-Token": f"{store.access_token}",
+        "Access-Control-Allow-Origin": "http://localhost:3003",
+        "Access-Control-Allow-Credentials": 'true'
+    }
+    body = request.body
+    res = requests.get(url, headers = headers, body = body)
+
 def get_brands(request):
     storeuser = StoreUser.objects.filter(id=request.session.get('storeuserid', None)).first()
     if storeuser is None:
