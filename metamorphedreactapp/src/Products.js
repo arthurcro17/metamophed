@@ -8,9 +8,10 @@ import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import { useLocation, Link } from "react-router-dom";
 import Form from 'react-bootstrap/Form';
+import Alert from 'react-bootstrap/Alert';
 
 function Products() {
-    const [products, setProducts] = useState([])
+    const [products, setProducts] = useState({})
     const [categories, setCategories] = useState({})
     const [loadingProducts, setLoadingProducts] = useState(true)
     const [loadingCategories, setLoadingCategories] = useState(true)
@@ -25,7 +26,9 @@ function Products() {
     const [filteredProductIDs, setFilteredProductIDs] = useState(new Set())
     const [selectedProductsIDs, setSelectedProductsIDs] = useState(new Set())
     const [templates, setTemplates] = useState([])
-    const [selectedTemplateID, setSelectedTemplateID] = useState()
+    const [selectedTemplateID, setSelectedTemplateID] = useState(-1)
+    const [saveMessage, setSaveMessage] = useState('')
+    const [saveMessageVariant, setSaveMessageVariant] = useState('')
 
 
     async function getCategories() {
@@ -51,8 +54,12 @@ function Products() {
         }
         const response = await fetch(url, fetchConfig);
         if (response.ok) {
-          const data = await response.json();
-          setProducts(data['products']);
+            const data = await response.json();
+            var map = {}
+            for (const product of data['products']) {
+                map[product['id']] = product
+            }
+            setProducts(map);
         }
         setLoadingProducts(false)
       }
@@ -102,11 +109,16 @@ function Products() {
         }
     }, [location.state])
 
+    useEffect(() => {
+        setSaveMessage('')
+        setSaveMessageVariant('')
+    }, [selectedProductsIDs, selectedTemplateID])
+
     if (loadingProducts || loadingCategories || loadingBrands) {
         return <div>Loading...</div>
     }
 
-    if (products.length === 0) {
+    if (Object.keys(products).length === 0) {
         return <div>No Products</div>
     }
 
@@ -276,7 +288,7 @@ function Products() {
                 </tr>
             </thead>
             <tbody style={{overflowY:'scroll'}}>
-                {props.productList.filter(productFilter).map((product) => (
+                {Object.values(props.productList).filter(productFilter).map((product) => (
                     <React.Fragment key={product['id']}>
                     <tr style={{backgroundColor: '#D6ECFB', height:'30px', overflow:'scroll'}}>
                         <td>
@@ -332,7 +344,7 @@ function Products() {
             <Form>
                 <Form.Group>
                     <Form.Select value={selectedTemplateID} onChange={(e) => (setSelectedTemplateID(e.target.value))}>
-                        <option>Product Templates</option>
+                        <option key={-1} value={-1}>Product Templates</option>
                         {Object.entries(templates).map(([id,template]) => (
                             <option key={id} value={id}>{template['template_name']}</option>
                         ))}
@@ -342,26 +354,55 @@ function Products() {
         )
     }
 
-    function updateProducts() {
+    async function updateProducts() {
+        if (selectedTemplateID  == -1) {
+            setSaveMessageVariant('warning')
+            setSaveMessage('Please select a Template to be applied')
+            return
+        }
+        if (selectedProductsIDs.size === 0) {
+            setSaveMessageVariant('warning')
+            setSaveMessage('Please select some products to be edited')
+            return
+        }
+        const productsToUpdate = Array.from(selectedProductsIDs).map(id => products[id])
         const url = `${process.env.REACT_APP_BACKEND}/update_products/`;
         const fetchConfig = {
+            method: 'PUT',
             credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "products": productsToUpdate,
+                "template": templates[selectedTemplateID]
+            })
         }
-        for (const id of selectedProductsIDs) {
-            console.log('ID: ', id)
+        const response = await fetch(url, fetchConfig)
+        if (response.ok) {
+            setSaveMessageVariant('success')
+            setSaveMessage('Products Successfully Updated')
         }
-        console.log('PRODUCTS: ', products)
-        console.log('SELECTED TEMPLATE ID: ', selectedTemplateID)
-        console.log('TEMPLATES: ', templates)
-        console.log('PRODUCTS: ', products)
-    }
-
-    function ApplyTemplate() {
-        return (
-            <Button variant="success" onClick={()=> {updateProducts()}}>Apply Template</Button>
-        )
     }
     
+    
+    function ApplyTemplate() {
+        return (
+            <>
+            <Row>
+                <Col style={{textAlign: 'right', marginTop:'20px'}}>
+                    <Button variant="success" onClick={()=> {updateProducts()}}>Apply Template</Button>
+                </Col>
+            </Row>
+            <Row>
+                <Col>
+                    <Alert variant={saveMessageVariant}>{saveMessage}</Alert>
+                </Col>
+            </Row>
+            </>
+        )
+    }
+
     return (
         <Container>
             <Row>
@@ -386,11 +427,7 @@ function Products() {
                     <ProductTemplateDropDown/>
                 </Col>
             </Row>
-            <Row>
-                <Col style={{textAlign: 'right', marginTop:'20px'}}>
-                    <ApplyTemplate/>
-                </Col>
-            </Row>
+            <ApplyTemplate/>
             <Row>
                 <Col>
                     <ProductTable productList = {products}/>

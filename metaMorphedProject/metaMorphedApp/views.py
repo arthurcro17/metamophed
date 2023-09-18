@@ -59,6 +59,7 @@ def auth_callback(request):
     return HttpResponseRedirect(settings.FRONT_END_URL)
 
 
+
 # Function called when app is loaded from bigCommerce store
 # Function verify's user using jwt
 # Function then redirects to the main page
@@ -208,20 +209,31 @@ def get_products(request):
     return JsonResponse({'products': products})
 
 def update_products(request):
-    storeuser = StoreUser.objects.filter(id=request.session.get('storeuserid', None)).firsT()
+    storeuser = StoreUser.objects.filter(id=request.session.get('storeuserid', None)).first()
     if storeuser is None:
         return HttpResponse("User not logged in!", status=401)
     store = storeuser.store
-    url = f"https://api.bigcommerce.com/stores/{store.store_hash}/v3/catalog/products"
-    headers = {
+    bigCommerceUrl = f"https://api.bigcommerce.com/stores/{store.store_hash}/v3/catalog/products"
+    bigCommerceheaders = {
         "Accept": "application/json", 
         "Content-Type": "application/json", 
         "X-Auth-Token": f"{store.access_token}",
         "Access-Control-Allow-Origin": "http://localhost:3003",
         "Access-Control-Allow-Credentials": 'true'
     }
-    body = request.body
-    res = requests.get(url, headers = headers, body = body)
+    
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        products = data.get("products")
+        template = data.get("template")
+        for product in products:
+            # Do something
+            print(product)
+        return JsonResponse({"message": "Products Successfully Updated"})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+    
+
 
 def get_brands(request):
     storeuser = StoreUser.objects.filter(id=request.session.get('storeuserid', None)).first()
@@ -336,9 +348,3 @@ def product_template(request, templateID = None):
     elif request.method == "DELETE":
         ProductTemplate.objects.filter(id=templateID).delete()
         return JsonResponse({"message": "Product Template Deleted"})
-
-
-
-    
-    
-

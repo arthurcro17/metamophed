@@ -35,11 +35,6 @@ function ProductTemplate() {
     const brands = location.state.brands
     const categories = location.state.categories
 
-    const productMap = products.reduce((map, product) => {
-        map[product.id] = product;
-        return map;
-    }, {});
-
     const stateMap = {
         'name': {'prompt': [productNamePrompt, setProductNamePrompt], 'old': [productNameOld, setProductNameOld], 'new':[productNameNew, setProductNameNew]},
         'description': {'prompt': [productDescriptionPrompt, setProductDescriptionPrompt], 'old': [productDescriptionOld, setProductDescriptionOld], 'new': [productDescriptionNew, setProductDescriptionNew]},
@@ -57,7 +52,7 @@ function ProductTemplate() {
     }
 
     useEffect(() => {
-        if (products.length === 0) {
+        if (Object.keys(products).length === 0) {
             return (
                 <Row>
                     <Col>No Products found in store</Col>
@@ -66,7 +61,7 @@ function ProductTemplate() {
             )
         }
         else {
-            setSelectedProductID(products[0]['id'])
+            setSelectedProductID(Object.keys(products)[0])
         }
     }, [products])
 
@@ -85,13 +80,13 @@ function ProductTemplate() {
     useEffect(() => {
         if (selectedProductID !== '') {
             for (const [key, value] of Object.entries(stateMap)) {
-                value['old'][1](productMap[selectedProductID][key])
+                value['old'][1](products[selectedProductID][key])
             }
 
-        }}, [selectedProductID, productMap])
+        }}, [selectedProductID, products])
 
     async function getAIProductData(productID, data) {
-        const product = productMap[productID]
+        const product = products[productID]
         const filteredProduct = {}
         for (const key of filteredKeys) {
             if (Object.keys(data).includes(key)) {
@@ -256,7 +251,7 @@ function ProductTemplate() {
                 <Col>
                     <Form.Group className ="mb-3" controlId='formProductSelected'>
                         <Form.Select onChange={(e) => setSelectedProductID(e.target.value)}>
-                            {products.map((product) => (
+                            {Object.values(products).map((product) => (
                                 <option key={product.id} value={product.id}>{product.name}</option>
                             ))}
                         </Form.Select>
@@ -269,7 +264,7 @@ function ProductTemplate() {
                 </Col>
                 <Col>
                 <MultiSelect
-                        options = {Object.keys(products[0])}
+                        options = {Object.keys(Object.keysproducts[selectedProductID])}
                         isObject= {false}
                         onSelect = {onKeyChange}
                         onRemove = {onKeyChange}
