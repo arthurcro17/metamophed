@@ -266,6 +266,23 @@ function Products() {
         }
     }
 
+    function MetaKeywords(props) {
+        if (typeof(props.product['meta_keywords']) == "string") {
+            return ( 
+                <div style={{maxHeight:'150px', overflowY:'auto'}}>
+                    {props.product['meta_keywords']}
+                </div>
+            )
+        }
+        else {
+            return (
+                <div style={{maxHeight:'150px', overflowY:'auto'}}>
+                    {props.product['meta_keywords'].join(", ")}
+                </div>   
+            )
+        }
+    }
+
     function ProductTable(props) {
         return (
         <Table>
@@ -318,7 +335,9 @@ function Products() {
                                 {product['meta_description']}
                             </div>
                         </td>
-                        <td>{product['meta_keywords']}</td>
+                        <td>
+                            <MetaKeywords product = {product} />
+                        </td>
                         <td>{product['inventory_level']}</td>
                         <td>
                             <ProductVisibility visible={product['is_visible']}/>
@@ -375,13 +394,16 @@ function Products() {
             },
             body: JSON.stringify({
                 "products": productsToUpdate,
-                "template": templates[selectedTemplateID]
+                "templateID": selectedTemplateID,
+                "brands": brands,
+                "categories": categories,
             })
         }
         const response = await fetch(url, fetchConfig)
         if (response.ok) {
             setSaveMessageVariant('success')
             setSaveMessage('Products Successfully Updated')
+            getProducts()
         }
     }
     

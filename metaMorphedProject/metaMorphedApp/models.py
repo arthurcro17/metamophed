@@ -2,29 +2,10 @@ from django.db import models
 from django.contrib.postgres import fields
 
 # Create your models here.
-class User(models.Model):
-    bc_id = models.IntegerField()
-    email = models.CharField(max_length=120)
-    username = models.CharField(max_length = 30)
-
-    def __repr(self):
-        return '<User id= %d bc_id= %d email=%s' % (self.id, self.bc_id, self.email)
-    
-class StoreUser(models.Model):
-    store = models.ForeignKey('Store', on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    admin = models.BooleanField(default=False)
-
-    def __repr__(self):
-        return '<StoreUser id:%d email=%s user_id=%d store_id=%d admin=%s>' \
-        % (self.id, self.user.email, self.user_id, self.store.store_id, self.admin)
-
 class Store(models.Model):
-    store_hash = models.CharField(max_length=16, unique=True)
-    access_token = models.CharField(max_length=128)
+    store_hash = models.CharField(max_length=16, unique= True)
+    access_token = models.CharField(max_length=128, unique = True)
     scope = models.TextField()
-    admin_storeuser_id = models.ForeignKey(StoreUser, on_delete=models.CASCADE, related_name='store_user_admin', null=True)
-    storeusers = models.ManyToManyField(StoreUser, related_name='stores')
 
     def __repr__(self):
         return '<Store id=%d store_hash=%s access_token=%s scope=%s>' \

@@ -264,7 +264,7 @@ function ProductTemplate() {
                 </Col>
                 <Col>
                 <MultiSelect
-                        options = {Object.keys(Object.keysproducts[selectedProductID])}
+                        options = {(selectedProductID) ? Object.keys(products[selectedProductID]) : [{"name":"Loading"}] }
                         isObject= {false}
                         onSelect = {onKeyChange}
                         onRemove = {onKeyChange}
