@@ -155,3 +155,25 @@ BIGCOMMERCE_CLIENT_SECRET = "eef8c5f039567f22d871016fc0d61dfc0a77c9e8667f949c942
 BIGCOMMERCE_AUTH_CALLBACK_URL = "http://localhost:8000/bigcommerce/callback/"
 FRONT_END_URL = "http://localhost:3003/"
 
+
+
+# Logging
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'django.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
