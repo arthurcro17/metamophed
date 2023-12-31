@@ -401,11 +401,11 @@ def product_template(request, templateID = None):
     store = Store.objects.filter(access_token=request.session.get("access_token", None)).first()
     if store is None:
         return JsonResponse({"response":"Not logged in!"})
-
     if request.method == "POST":
         content = json.loads(request.body)
         try:
             content['store'] = store
+            template_id = content.pop("template_id")
             ProductTemplate.objects.create(**content),
             return JsonResponse({"message": "Product Template Created"})
         
@@ -420,22 +420,23 @@ def product_template(request, templateID = None):
             return response
         
     elif request.method == "GET":
-        if templateID:
-            template = ProductTemplate.objects.get(id=templateID)
-            return JsonResponse({"template": template})
-        else:
-            templates_queryset = ProductTemplate.objects.all()
-            serialized_templates = serializers.serialize("json", templates_queryset)
-            templates = {}
-            for template in json.loads(serialized_templates):
-                templates[template["pk"]] = template["fields"]
-            return JsonResponse({"templates": templates})
+        templates_queryset = ProductTemplate.objects.all()
+        serialized_templates = serializers.serialize("json", templates_queryset)
+        templates = {}
+        for template in json.loads(serialized_templates):
+            templates[template["pk"]] = template["fields"]
+        return JsonResponse({"templates": templates})
     
-    # elif request.method == "PUT":
-    #     content = json.loads(request.body)
-    #     ProductTemplate.objects.filter(id=templateID).update(**content)
-    #     return JsonResponse({"message": "Template Updated"})
+    elif request.method == "PUT":
+        content = json.loads(request.body)
+        template_id = content.pop("template_id")
+        updated_template = ProductTemplate.objects.filter(id=template_id).update(**content)
+        print('Template ID: ', templateID)
+        print('CONTENT FOR PUT: ', content)
+        print('Updated Content: ', updated_template)
+        return JsonResponse({"message": "Template Updated"})
         
     elif request.method == "DELETE":
-        ProductTemplate.objects.filter(id=templateID).delete()
+        template_id = content.pop("template_id")
+        ProductTemplate.objects.filter(id=template_id).delete()
         return JsonResponse({"message": "Product Template Deleted"})

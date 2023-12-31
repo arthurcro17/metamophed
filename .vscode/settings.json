@@ -6,6 +6,7 @@
         "oldadminuser",
         "openai",
         "storeuser",
-        "storeuserid"
+        "storeuserid",
+        "unneccesary"
     ]
 }

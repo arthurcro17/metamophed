@@ -1,14 +1,13 @@
 import React, {useState, useEffect} from "react";
-import Table from 'react-bootstrap/Table';
 import Button from 'react-bootstrap/Button';
-import { ArrowRightCircleFill, ArrowDownCircle } from 'react-bootstrap-icons'
-import no_image from './images/no-image-icon.png'
+import { BoxArrowDown, BoxArrowUp, FilterCircle, FilterCircleFill} from 'react-bootstrap-icons'
 import Container from 'react-bootstrap/Container'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
-import { useLocation, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import Form from 'react-bootstrap/Form';
 import Alert from 'react-bootstrap/Alert';
+import MultiSelect from 'multiselect-react-dropdown';
 
 function Products() {
     const [products, setProducts] = useState({})
@@ -16,20 +15,32 @@ function Products() {
     const [loadingProducts, setLoadingProducts] = useState(true)
     const [loadingCategories, setLoadingCategories] = useState(true)
     const [loadingBrands, setLoadingBrands] = useState(true)
-    const [displayVariants, setDisplayVariants] = useState({})
     const [brands, setBrands] = useState({})
-    const location = useLocation({state:{}})
+
     const [filtersApplied, setFiltersApplied] = useState(false)
+    const [isBrandDropdownOpen, setIsBrandDropdownOpen] = useState(false)
+    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
+    const [isVisibilityDropdownOpen, setIsVisibilityDropdownOpen] = useState(false)
+    const [isBrandFiltered, setIsBrandFiltered] = useState(false)
+    const [isCategoryFiltered, setIsCategoryFiltered] = useState(false)
+    const [isVisibilityFiltered, setIsVisibilityFiltered] = useState(false)
     const [filteredBrands, setFilteredBrands] = useState(new Set())
     const [filteredCategories, setFilteredCategories] = useState(new Set())
-    const [filteredVisibilities, setFilteredVisibilities] = useState(new Set())
+    const [filteredVisibilities, setFilteredVisibilities] = useState(new Array())
     const [filteredProductIDs, setFilteredProductIDs] = useState(new Set())
     const [selectedProductsIDs, setSelectedProductsIDs] = useState(new Set())
     const [templates, setTemplates] = useState([])
     const [selectedTemplateID, setSelectedTemplateID] = useState(-1)
     const [saveMessage, setSaveMessage] = useState('')
     const [saveMessageVariant, setSaveMessageVariant] = useState('')
+    const [isStickyTabShown, setIsStickyTabShown] = useState(true)
 
+    /*
+
+    First functions all are called when page first loads, fetching the 
+    stores products, categories, brands, and any templates associates with the store.
+    
+    */
 
     async function getCategories() {
         const url = `${process.env.REACT_APP_BACKEND}/get_categories/`
@@ -99,15 +110,11 @@ function Products() {
         getBrands()
         getTemplates()
     }, []);
-    
+
     useEffect(() => {
-        if (location['state']) {
-            setFilteredBrands(location.state.filteredBrands)
-            setFilteredCategories(location.state.filteredCategories)
-            setFilteredVisibilities(location.state.filteredVisibilities)
-            setFiltersApplied(true)
-        }
-    }, [location.state])
+        setFiltersApplied((filteredBrands.size + filteredCategories.size + filteredVisibilities.length > 0))
+
+    }, [filteredBrands, filteredCategories, filteredVisibilities])
 
     useEffect(() => {
         setSaveMessage('')
@@ -122,20 +129,89 @@ function Products() {
         return <div>No Products</div>
     }
 
+    /*
+
+    Here are the functions related to the filtering of the products
+
+    */
+
+    function productFilter(product) {
+        var newSet = filteredProductIDs
+        console.log('PRODUCT ID: ', product.id)
+        if (!filtersApplied) {
+            setFilteredProductIDs(newSet.add(product.id))
+            console.log('Filters Applied')
+            return true
+        }
+        if (filteredVisibilities.length > 0 && !filteredVisibilities.includes(Number(product.is_visible))) {
+            newSet.delete(product.id)
+            setFilteredProductIDs(newSet)
+            console.log('Visibility')
+            return false
+        }
+        if (filteredBrands.size > 0 && !filteredBrands.has(product.brand_id.toString())) {
+            newSet.delete(product.id)
+            setFilteredProductIDs(newSet)
+            console.log('Brand')
+            return false
+        }
+        if (filteredCategories.size > 0) {
+            for (const category of product.categories) {
+                if (filteredCategories.has(category.toString())) {
+                    newSet.add(product.id)
+                    setFilteredProductIDs(newSet)
+                    console.log('Categories')
+                    return true
+                }
+            }
+
+            return false
+        }
+        return true
+    }
+
+    const toggleBrandDropdown = () => {
+        setIsBrandDropdownOpen(!isBrandDropdownOpen)
+    }
+
+    const toggleCategoryDropdown = () => {
+        setIsCategoryDropdownOpen(!isCategoryDropdownOpen)
+    }
+
+    const toggleVisibilityDropdown = () => {
+        setIsVisibilityDropdownOpen(!isVisibilityDropdownOpen)
+    }
+
+    function onBrandChange(brands) {
+        const brandSet = new Set(brands.map(brand => brand.id))
+        setFilteredBrands(brandSet)
+        setIsBrandFiltered(brandSet.size > 0)
+    }
+
+    function onCategoryChange(categories) {
+        const categorySet = new Set(categories.map(category => category.id))
+        setFilteredCategories(categorySet)
+        setIsCategoryFiltered(categorySet.size > 0)
+    }
+
+    function onVisibilityChange(visibilities) {
+        const visibilityList = visibilities.map(visibility => visibility.id)
+        setFilteredVisibilities(visibilityList)
+        setIsVisibilityFiltered(visibilityList.length > 0)
+    }
+
+    /* 
+
+    Here are the functions for formatting the product info displayed in the table
+
+    */
+
     function ThumbnailImage(props) {
         for (const image of props.images) {
             if (image['is_thumbnail'] === true) {
                 return (
-                    <img src= {image['url_thumbnail']} alt='' style={{opacity: 0.65, height: '100px', width:'100px'}}/>
+                    <img src= {image['url_thumbnail']} className="thumbnail-class" alt=''/>
                 )}}}
-
-    function BrandName(props) {
-        return (
-            <div>
-                {brands[props.brandID]}
-            </div>
-        )
-    }
  
     function CategoryNames(props) {
         var categoryList = []
@@ -154,100 +230,171 @@ function Products() {
             )}
         else {
             return (
-                <div style={{ color: 'white', backgroundColor: 'red'}}>
+                <div style={{ color: 'white', backgroundColor: 'red', textAlign: 'center'}}>
                     Disabled
                 </div>
             )}}
 
-    function hasVariants(variants) {
-        if (variants.length > 1) {
-            return false // Set to True if enabling variants
+    function MetaKeywords(props) {
+        if (typeof(props.product['meta_keywords']) == "string") {
+            return ( 
+                <div>
+                    {props.product['meta_keywords']}
+                </div>
+            )
         }
-        return false
-    }
-
-    function ProductVariantArrow(props) {
-        if (hasVariants(props.variants)) {
-            if (!displayVariants[props.id]) {
-                return (
-                    <Button style= {{backgroundColor: '#D6ECFB', border:'0px', alignItems: 'center'}} onClick={() => changeDisplayVariants(props.id) }>
-                        <ArrowRightCircleFill style= {{height: '25px', width: '25px', color: 'A3B9C8'}}/>
-                    </Button>
-                )}
-            else {
-                return (
-                    <Button style= {{backgroundColor: '#D6ECFB', border:'0px', alignItems: 'center'}} onClick={() => changeDisplayVariants(props.id) }>
-                        <ArrowDownCircle style= {{height: '25px', width: '25px', color: 'A3B9C8'}}/>
-                    </Button>
-                )}}}
-
-    function VariantName(props) {
-        var names = []
-        for (const option of props.options) {
-            names.push(option['label'])
-        }
-        return names.join(', ')
-    }
-
-    function changeDisplayVariants(id) {
-        const newDisplayVariants = {}
-        newDisplayVariants[id] = !(displayVariants[id] ?? false)
-        setDisplayVariants(newDisplayVariants)
-        return
-    }
-
-    function ProductVariants(props) {
-        if (displayVariants[props.id] === true) {
-            return (
-                <>
-                {props.variants.map((variant) => (
-                    <tr key = {String(variant['id']) + String(variant['product_id'])} style={{backgroundColor: '#D6ECFB'}}>
-                        <td></td>
-                        <td>
-                            {/* <input className="form-check-input" type="checkbox" id={variant['id']} value="" style={{ height:"26px", width:"26px" }}/> */}
-                        </td>
-                        <td>
-                            <img src= {variant['image_url']} alt="" onError={(e) => (e.target.src = no_image)} style={{opacity: 0.65, height: '100px', width:'100px'}}/>
-                        </td>
-                        <td>
-                            <VariantName options = {variant['option_values']}/>
-                        </td>
-                        <td></td>
-                        <td></td>
-                        <td>{variant['inventory_level']}</td>
-                        <td></td>
-                    </tr>
-                ))}
-                </>
-            )}
         else {
-            return
-        }}
-
-    function productFilter(product) {
-        var newSet = filteredProductIDs
-        if (!filtersApplied) {
-            setFilteredProductIDs(newSet.add(product.id))
-            return true
+            return (
+                <div>
+                    {props.product['meta_keywords'].join(", ")}
+                </div>   
+            )
         }
-        if (!filteredVisibilities.has(product.is_visible)) {
-            newSet.delete(product.id)
-            setFilteredProductIDs(newSet)
-            return false
-        }
-        if (!filteredBrands.has(product.brand_id)) {
-            newSet.delete(product.id)
-            setFilteredProductIDs(newSet)
-            return false
-        }
-        for (const category of product.categories) {
-            if (filteredCategories.has(category)) {
-                setFilteredProductIDs(newSet.add(product.id))
-                return true
-                }
-        }
-        return false
     }
+
+    function ProductTable(props) {
+        return (
+        <table className="table-custom">
+            <thead>
+                <tr>
+                    <th>
+                        <input className="form-check-class" type="checkbox" onClick={(e) => selectAllProducts()} defaultChecked={selectedProductsIDs.size===filteredProductIDs.size}/>
+                    </th>
+                    <th>Image</th>
+                    <th>Product</th>
+                    <th>
+                        <div className="table-header-with-button">
+                            Brand
+                            <button className="dropdown-button" onClick={toggleBrandDropdown}>
+                                {isBrandFiltered ? <FilterCircleFill/> : <FilterCircle/>}
+                            </button>
+                            <div className="dropdown-search">
+                                {isBrandDropdownOpen &&
+                                        <MultiSelect
+                                        options = {Object.keys(brands).map(key => ({'id': key, 'name': brands[key]}))}
+                                        isObject= {true}
+                                        onSelect = {onBrandChange}
+                                        onRemove = {onBrandChange}
+                                        displayValue = "name"
+                                        showCheckbox = {true}
+                                        selectedValues = {Object.entries(brands).filter(([key]) => filteredBrands.has(key)).map(([key, value]) => ({id: key, name: value}))}
+                                        closeOnSelect = {false}
+                                        className = {'multiselect-class'}
+                                    />
+                                }
+                            </div>
+                        </div>
+                    </th>
+                    <th>
+                        <div className="table-header-with-button">
+                            Categories
+                            <button className="dropdown-button" onClick={toggleCategoryDropdown}>
+                                {isCategoryFiltered ? <FilterCircleFill/> : <FilterCircle/>}
+                            </button>
+                            <div className="dropdown-search">
+                                {isCategoryDropdownOpen &&
+                                        <MultiSelect
+                                        options = {Object.keys(categories).map(key => ({'id': key, 'name': categories[key]}))}
+                                        isObject= {true}
+                                        onSelect = {onCategoryChange}
+                                        onRemove = {onCategoryChange}
+                                        displayValue = "name"
+                                        showCheckbox = {true}
+                                        selectedValues = {Object.entries(categories).filter(([key]) => filteredCategories.has(key)).map(([key, value]) => ({id: key, name: value}))}
+                                        closeOnSelect = {false}
+                                        className = {'multiselect-class'}
+                                    />
+                                }
+                            </div>
+                        </div>
+                    </th>
+                    <th>Description</th>
+                    <th>Page Title</th>
+                    <th>Meta Description</th>
+                    <th>Meta Keywords</th>
+                    <th>Stock</th>
+                    <th>
+                        <div className="table-header-with-button">
+                            Visibility
+                            <button className="dropdown-button" onClick={toggleVisibilityDropdown}>
+                                {isVisibilityFiltered ? <FilterCircleFill/> : <FilterCircle/>}
+                            </button>
+                            <div className="dropdown-search">
+                                {isVisibilityDropdownOpen &&
+                                        <MultiSelect
+                                        options = {[{id: 1, name: 'Enabled'}, {id: 0, name: 'Disabled'}]}
+                                        isObject= {true}
+                                        onSelect = {onVisibilityChange}
+                                        onRemove = {onVisibilityChange}
+                                        showCheckbox = {true}
+                                        selectedValues = {[{id: 1, name: 'Enabled'}, {id: 0, name: 'Disabled'}].filter((item) => filteredVisibilities.includes(item.id))}
+                                        closeOnSelect = {false}
+                                        displayValue = "name"
+                                        className = {'multiselect-class'}
+                                    />
+                                }
+                            </div>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {Object.values(props.productList).filter(productFilter).map((product) => (
+                    <React.Fragment key={product['id']}>
+                    <tr>
+                        <td >
+                            <input className="form-check-class" type="checkbox" id={product['id']} onClick={() => changeSelectedProducts(product['id'])} defaultChecked={selectedProductsIDs.has(product['id'])}/>
+                        </td>
+                        <td>
+                            <ThumbnailImage images = {product['images']}/>
+                        </td>
+                        <td>
+                            {product['name']}
+                        </td>
+                        <td>
+                            {brands[product['brand_id']]}
+                        </td>
+                        <td>
+                            <CategoryNames categoryIDs = {product['categories']}/>
+                        </td>
+                        <td>
+                            <div className="scrollable-content"> 
+                                {product['description']}
+                            </div>
+                        </td>
+                        <td>
+                            <div className="scrollable-content">
+                                {product['page_title']}
+                            </div>
+                        </td>
+                        <td>
+                            <div className="scrollable-content">
+                                {product['meta_description']}
+                            </div>
+                        </td>
+                        <td>
+                            <div className="scrollable-content">
+                                <MetaKeywords product = {product} />
+                            </div>
+                        </td>
+                        <td>
+                            {product['inventory_level']}
+                        </td>
+                        <td>
+                            <ProductVisibility visible={product['is_visible']}/>
+                        </td>
+                    </tr>
+                    </React.Fragment>
+                ))}
+            </tbody>
+        </table>   
+        )}
+
+    /*
+
+    Here are the functions related to selected products to be edited
+
+    */
 
     function changeSelectedProducts(id) {
         var newSet = selectedProductsIDs
@@ -264,103 +411,18 @@ function Products() {
         else {
             setSelectedProductsIDs(filteredProductIDs)
         }
+        console.log('filtered: ', filteredProductIDs, 'selected: ', selectedProductsIDs, 'brands', filteredBrands, 'categories', filteredCategories)
     }
 
-    function MetaKeywords(props) {
-        if (typeof(props.product['meta_keywords']) == "string") {
-            return ( 
-                <div style={{maxHeight:'150px', overflowY:'auto'}}>
-                    {props.product['meta_keywords']}
-                </div>
-            )
-        }
-        else {
-            return (
-                <div style={{maxHeight:'150px', overflowY:'auto'}}>
-                    {props.product['meta_keywords'].join(", ")}
-                </div>   
-            )
-        }
-    }
+/* 
 
-    function ProductTable(props) {
-        return (
-        <Table>
-            <thead>
-                <tr>
-                    <th>
-                        <input className="form-check-input" type="checkbox" style={{ height:"26px", width:"26px" }} onClick={(e) => selectAllProducts()} defaultChecked={selectedProductsIDs.size===filteredProductIDs.size}/>
-                    </th>
-                    <th></th>
-                    <th>Image</th>
-                    <th>Product</th>
-                    <th>Brand</th>
-                    <th>Categories</th>
-                    <th>Description</th>
-                    <th>Page Title</th>
-                    <th>Meta Keywords</th>
-                    <th>Meta Description</th>
-                    <th>Stock</th>
-                    <th>Visibility</th>
-                </tr>
-            </thead>
-            <tbody style={{overflowY:'scroll'}}>
-                {Object.values(props.productList).filter(productFilter).map((product) => (
-                    <React.Fragment key={product['id']}>
-                    <tr style={{backgroundColor: '#D6ECFB', height:'30px', overflow:'scroll'}}>
-                        <td>
-                            <input className="form-check-input" type="checkbox" id={product['id']} style={{ height:"26px", width:"26px" }} onClick={() => changeSelectedProducts(product['id'])} defaultChecked={selectedProductsIDs.has(product['id'])}/>
-                        </td>
-                        <td>
-                            <ProductVariantArrow variants = {product['variants']} id = {product['id']}/>
-                        </td>
-                        <td>
-                            <ThumbnailImage images = {product['images']}/>
-                        </td>
-                        <td>{product['name']}</td>
-                        <td>
-                            <BrandName brandID = {product['brand_id']}/>
-                        </td>
-                        <td>
-                            <CategoryNames categoryIDs = {product['categories']}/>
-                        </td>
-                        <td>
-                            <div style={{maxHeight:'150px', overflowY:'auto'}}>
-                                {product['description']}
-                            </div>
-                        </td>
-                        <td>{product['page_title']}</td>
-                        <td>
-                            <div style={{maxHeight:'150px', overflowY:'auto'}}>
-                                {product['meta_description']}
-                            </div>
-                        </td>
-                        <td>
-                            <MetaKeywords product = {product} />
-                        </td>
-                        <td>{product['inventory_level']}</td>
-                        <td>
-                            <ProductVisibility visible={product['is_visible']}/>
-                        </td>
-                    </tr>
-                    <ProductVariants id = {product['id']} variants = {product['variants']}/>
-                    </React.Fragment>
-                ))}
-            </tbody>
-        </Table>   
-        )}
+Here are the functions for selecting and applying a template to the products
 
-    function ProductTemplateLink() {
-        return (
-            <Link to='/productTemplate' state={{products: products, brands: brands, categories: categories}}>
-            <h3>Product Template</h3>
-            </Link>
-        )
-    }
+*/
 
     function ProductTemplateDropDown() {
         return (
-            <Form>
+            <Form className="form-custom">
                 <Form.Group>
                     <Form.Select value={selectedTemplateID} onChange={(e) => (setSelectedTemplateID(e.target.value))}>
                         <option key={-1} value={-1}>Product Templates</option>
@@ -373,8 +435,59 @@ function Products() {
         )
     }
 
+    function ApplyTemplate() {
+        return (
+            <>
+            <Row>
+                <Col>
+                    <Button className="btn-custom" variant="success" onClick={()=> {updateProducts()}}>Apply Template</Button>
+                </Col>
+            </Row>
+            <Row>
+                <Col>
+                    <Alert variant={saveMessageVariant}>{saveMessage}</Alert>
+                </Col>
+            </Row>
+            </>
+        )
+    }
+
+    const toggleTab = () => {
+        setIsStickyTabShown(!isStickyTabShown)
+    }
+
+    function StickyTab() {
+        return (
+            <Container className={`sticky-tab ${isStickyTabShown ? 'shown' : 'hidden'}`}>
+                <Row>
+                    <Col className="sticky-tab-element" style={{fontSize:'20px', fontWeight:'bold', paddingTop:'10px'}}>
+                        <h1>Edit Product Details</h1>
+                    </Col>
+                </Row>
+                <Row>
+                    <Col className="sticky-tab-element">
+                        <h3>Select template to apply to products</h3>
+                    </Col>
+                </Row>
+                <Row>
+                    <Col className="sticky-tab-element">
+                        <ProductTemplateDropDown/>
+                    </Col>
+                </Row>
+                <Row>
+                    <Col className="sticky-tab-element" style={{paddingBottom:'0'}}>
+                        <ApplyTemplate/>
+                    </Col>
+                </Row>
+                <button onClick={toggleTab} className="toggle-button"> 
+                    {isStickyTabShown ? <BoxArrowDown/> : <BoxArrowUp/>}
+                </button>
+            </Container>
+        )
+    }
+
     async function updateProducts() {
-        if (selectedTemplateID  == -1) {
+        if (selectedTemplateID  === -1) {
             setSaveMessageVariant('warning')
             setSaveMessage('Please select a Template to be applied')
             return
@@ -406,55 +519,49 @@ function Products() {
             getProducts()
         }
     }
-    
-    
-    function ApplyTemplate() {
+
+    function TemplateEditor() {
         return (
-            <>
-            <Row>
-                <Col style={{textAlign: 'right', marginTop:'20px'}}>
-                    <Button variant="success" onClick={()=> {updateProducts()}}>Apply Template</Button>
-                </Col>
-            </Row>
-            <Row>
-                <Col>
-                    <Alert variant={saveMessageVariant}>{saveMessage}</Alert>
-                </Col>
-            </Row>
-            </>
+            <div style={{paddingTop:'20px'}}>
+                <Link className="btn-custom link-class" to='/productTemplate' state={{products: products, brands: brands, categories: categories, templates: templates}} >
+                    Product Templates
+                </Link>
+            </div>
         )
     }
 
     return (
         <Container>
+            <div className="top-section">
+                <Row>
+                    <TemplateEditor/>
+                    <Col className="title">
+                        <h1>MetaMorphed</h1>
+                    </Col>
+                </Row>
+            </div>
             <Row>
-                <Col style= {{textAlign: 'center'}}>
-                    <h1>Products</h1>
+                <Col style={{textAlign:'right'}}>
+                    <Button className="btn-custom" variant="outline-dark" 
+                    onClick={()=> 
+                    {setFiltersApplied(false); 
+                    setFilteredBrands(new Set()); 
+                    setFilteredCategories(new Set()); 
+                    setFilteredVisibilities(new Array())
+                    setIsBrandFiltered(false)
+                    setIsCategoryFiltered(false)
+                    setIsVisibilityFiltered(false)}}>
+                        Clear Filters
+                    </Button>
                 </Col>
             </Row>
-            <Row>
-                <Col>
-                    <ProductTemplateLink/>
-                </Col>
-                <Col style = {{textAlign: 'right'}}>
-                    <Link to='/filters' state={{brands: brands, categories: categories}}>
-                        <h2>Filters</h2>
-                    </Link>
-                    <Button variant="outline-dark" onClick={()=> {setFiltersApplied(false); setFilteredBrands(new Set()); setFilteredCategories(new Set()); setFilteredVisibilities(new Set())}}>Clear Filters</Button>
-                </Col>
-            </Row>
-            <Row style={{marginTop: '20px', textAlign:'left'}}>
-                <Col className='col-2'>Select a Template to Apply to Products:</Col>
-                <Col className='col-5' style={{textAlign:'left'}}>
-                    <ProductTemplateDropDown/>
-                </Col>
-            </Row>
-            <ApplyTemplate/>
             <Row>
                 <Col>
                     <ProductTable productList = {products}/>
                 </Col>
+                <StickyTab/>
             </Row>
+            
         </Container>
     );
 }
