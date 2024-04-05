@@ -327,3 +327,58 @@ select {
   padding: 5px 10px;
   cursor: pointer;
 }
+
+.top-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 20px
+
+}
+
+.title {
+  flex: 1;
+}
+
+.model-toggle-container {
+  margin-left: auto;
+}
+
+.model-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.model-toggle span {
+  margin: 0 8px;
+}
+
+.attribute-row {
+  padding-bottom: 10px;
+  border-top: 3px solid black;
+}
+
+.first-attribute-row {
+  margin-top: 50px;
+}
+
+.attribute-form-name {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  vertical-align: middle;
+  padding-bottom: 100px;
+}
+
+.attribute-form {
+  padding-top: 10px;
+}
+
+.attribute-form-group {
+  text-size-adjust: auto;
+}
+
+.attribute-form-labels {
+  text-align: center;
+}
+

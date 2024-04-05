@@ -6,6 +6,7 @@ class Store(models.Model):
     store_hash = models.CharField(max_length=16, unique= True)
     access_token = models.CharField(max_length=128, unique = True)
     scope = models.TextField()
+    premium = models.BooleanField(default=False)
 
     def __repr__(self):
         return '<Store id=%d store_hash=%s access_token=%s scope=%s>' \

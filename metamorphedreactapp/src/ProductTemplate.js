@@ -7,6 +7,7 @@ import Alert from "react-bootstrap/Alert";
 import { useLocation, Link } from 'react-router-dom';
 import MultiSelect from 'multiselect-react-dropdown';
 import { BoxArrowDown, BoxArrowUp} from 'react-bootstrap-icons';
+import Switch from 'react-bootstrap/Switch';
 
 function ProductTemplate() {
     const location = useLocation()
@@ -20,6 +21,8 @@ function ProductTemplate() {
     const [saveMessageVariant, setSaveMessageVariant] = useState('')
     const [isStickyTabShown, setIsStickyTabShown] = useState(true)
     const [templates, setTemplates] = useState(location.state.templates)
+    const [isPremium, setIsPremium] = useState(false)
+    const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo')
     const brands = location.state.brands
     const categories = location.state.categories
 
@@ -57,6 +60,23 @@ function ProductTemplate() {
             setSelectedProductID(Object.keys(products)[0])
         }
     }, [products])
+
+    async function checkPremium() {
+        const url = `${process.env.REACT_APP_BACKEND}/check_premium/`
+        const fetchConfig = {
+            credentials: "include",
+            method: "GET",
+        }
+        const response = await fetch(url, fetchConfig)
+        if (response.ok) {
+            const data = await response.json()
+            setIsPremium(data['premium'])
+        }
+    }
+
+    useEffect(() => {
+        checkPremium()
+    }, [])
 
     useEffect(() => {
         setSaveMessage('')
@@ -141,6 +161,26 @@ function ProductTemplate() {
             }
         } 
 
+
+    function ModelToggle() {
+        const handleChange = (e) => {
+            const checked = e.target.checked
+            if (!isPremium) {
+                alert('GPT-4 is only available to premium stores.')
+                return
+            }
+            setSelectedModel(checked ? 'gpt-4-turbo' : 'gpt-3.5-turbo')
+            
+        }
+        return (
+            <div className="model-toggle">
+                <span>GPT 3.5</span>
+                <Switch checked={selectedModel==='gpt-4-turbo'} onChange={handleChange} />
+                <span>GPT 4</span>
+            </div>
+        )      
+    }
+
     function AttributeForm(props) {
         const [localPrompt, setLocalPrompt] = useState(attributes[props.keyName].prompt)
         const handlePromptChange = (event) => {
@@ -162,14 +202,14 @@ function ProductTemplate() {
 
         return (
             <>
-            <Col className='col-2' style={{display:'flex', justifyContent:'center', alignItems:'center', verticalAlign:'middle', paddingBottom:'100px'}}>
+            <Col className='col-2 attribute-form-name'>
             {props.name}
             </Col>
             <Col>
-                <Form style={{paddingTop:'10px'}}>
+                <Form className="attribute-form">
                     <Row>
                         <Col>
-                            <Form.Group className ="mb-3" style={{textSizeAdjust:'auto', marginBottom:'0px'}} controlId={`formProduct${props.keyName}Prompt`}>
+                            <Form.Group className ="mb-3 attribute-form-group" controlId={`formProduct${props.keyName}Prompt`}>
                                 <Form.Control
                                     as="textarea"
                                     type='text'
@@ -182,7 +222,7 @@ function ProductTemplate() {
                         </Col>
                     </Row>
                     <Row>
-                    <Row style={{textAlign:'center'}}>
+                    <Row className='attribute-form-labels'>
                         <Col>Old {props.name}</Col>
                         <Col>New {props.name}</Col>
                     </Row>
@@ -304,12 +344,13 @@ function ProductTemplate() {
         <>
         <Container>
             <div className="top-section">
-                <Row>
-                    <ProductPageButton/>
-                    <Col className="title">
-                        <h1>Product Template</h1>
-                    </Col>
-                </Row>
+                <ProductPageButton/>
+                <Col className="title">
+                    <h1>Product Template</h1>
+                </Col>
+                <div className="model-toggle-container">
+                    <ModelToggle/>
+                </div>
             </div>
             <Row>
                 <Col>
@@ -340,7 +381,7 @@ function ProductTemplate() {
                     </Form.Group>
                 </Col>
             </Row>
-            <Row style={{paddingBottom:'50px'}}>
+            <Row>
                 <Col>
                     Product info for template:
                 </Col>
@@ -359,19 +400,19 @@ function ProductTemplate() {
                     />
                 </Col>
             </Row>
-            <Row style={{paddingBottom:'10px', borderTop:'3px solid black'}}>
+            <Row className='attribute-row first-attribute-row'>
                 <AttributeForm name='Name' keyName='name'/>   
             </Row>
-            <Row style={{paddingBottom:'10px', borderTop:'3px solid black'}}>
+            <Row className='attribute-row'>
                 <AttributeForm name='Description' keyName='description'/>
             </Row>
-            <Row style={{paddingBottom:'10px', borderTop:'3px solid black'}}>
+            <Row className='attribute-row'>
                 <AttributeForm name='Page Title' keyName='page_title'/>
             </Row>
-            <Row style={{paddingBottom:'10px', borderTop:'3px solid black'}}>
+            <Row className='attribute-row'>
                 <AttributeForm name='Meta Description' keyName='meta_description'/> 
             </Row>
-            <Row style={{paddingBottom:'10px', borderTop:'3px solid black'}}>
+            <Row className='attribute-row'>
                 <AttributeForm name='Meta Keywords' keyName='meta_keywords'/>
             </Row>
             <StickyTab/>

@@ -185,91 +185,6 @@ def get_products(request):
     products = res.json()['data']
     return JsonResponse({'products': products})
 
-# def update_product_in_bigcommerce(store_hash, access_token, product_id, updated_data):
-#     """ 
-#     Update a single product in BigCommerce
-#     """
-#     try: 
-#         url = big_commerce_url(store_hash, f"products/{product_id}")
-#         headers = big_commerce_headers(access_token)
-#         response = requests.put(url, headers, json=updated_data)
-#         response.raise_for_status()
-#         logger.info(f"Product {product_id} updated successfully in BigCommerce")
-#     except requests.RequestException as e:
-#         logger.error(f"Error updating product {product_id} in BigCommerce: {e}")
-#         raise
-
-# def get_ai_enhanced_data(data):
-#     """
-#     Get Enhanced data from aI for product update
-#     """
-#     try:
-#         ai_data_response = get_AI_product_data(request, data=data)
-#         if ai_data_response.status_code != 200:
-#             return JsonResponse({'error': 'Failed to updated product with AI'}, status=500)
-#         ai_data = json.loads(ai_data_response.content.decode('utf-8'))
-#         attributes = ai_data["new_attributes"]
-#         for attribute in attributes.keys():
-#             product[attribute] = attributes[attribute]['new']
-#         if 'meta_keywords' in product.keys():
-#             product['meta_keywords'] = product['meta_keywords'].split(', ')
-#         try:
-#             res = requests.put(
-#                 url=big_commerce_url(store.store_hash, f"products/{full_product['id']}"),
-#                 headers=(store.access_token),
-#                 json=product)
-#             different_values = {key:[value,res.json()['data'][key]] for [key, value] in product.items() if value != res.json()['data'][key]}
-#             print('DIFFERENT VALUES', different_values)
-
-#         except Exception as e:
-#             logger.exception(f"An error occurred when trying to update product {product['id']} in update_products: {e}")
-#             return HttpResponse("An internal error occurred", status=500)
-#     except Exception as e:
-#         logger.error(f"Error getting ai enhanced data: {e}")
-#         raise
-
-# def prepare_data_for_ai(full_product, template_id, brands, categories):
-#     template = get_object_or_404(ProductTemplate, pk=template_id)
-#     meta_fields = template._meta.fields
-#     fields = [str(field).split('.')[-1] for field in meta_fields if str(field).split('.')[-1] not in ['store', 'template_name', 'id', 'additional_product_info']]
-#     product = {}
-#     product['name'] = full_product['name']
-#     product['type'] = full_product['type']
-#     product['weight'] = full_product['weight']
-#     product['price'] = full_product['price']
-#     data = {}
-#     data['additional_product_info'] = {field:full_product[field] for field in template.additional_product_info}
-#     if 'categories' in data['additional_product_info']:
-#         data['additional_product_info']['categories'] = [categories[str(id)] for id in data['additional_product_info']['categories']]
-#     if 'brand_id' in data['additional_product_info']:
-#         data['additional_product_info']['brand_id'] = brands[str(data['additional_product_info']['brand_id'])]
-#     for field in fields:
-#         if getattr(template, field):
-#             data[field] = {"old":full_product[field], "prompt": getattr(template, field)}
-
-# def update_products(request):
-#     """
-#     Update products in BigCommerce using AI-enhanced data
-#     """
-#     store = get_object_or_404(Store, access_token=request.session.get("access_token", None))
-#     try:
-#         # parse and validate request data.
-#         data = json.loads(request.body.decode('utf-8'))
-#         products = data.get("products")
-#         template_ID = data.get("templateID")
-#         brands = data.get("brands")
-#         categories = data.get("categories")
-
-#         for full_product in products:
-#             ai_request_data = prepare_data_for_ai(full_product, template_ID, brands, categories)
-#             ai_enhanced_data = get_ai_enhanced_data(ai_request_data)
-#             update_product_in_bigcommerce(store.store_hash, full_product['id'], ai_enhanced_data)
-#         return JsonResponse({"message": "Products Successfully Updated"})
-#     except Exception as e:
-#         logger.error(f"An error occurred in update_products: {e}")
-#         return JsonResponse({'error': str(e)}, status = 500)
-
-
 def update_products(request):
     store = get_object_or_404(Store, access_token=request.session.get("access_token", None))
     try:
@@ -278,6 +193,7 @@ def update_products(request):
         templateID = data.get("templateID")
         brands = data.get("brands")
         categories = data.get("categories")
+        model = data.get("model", "gpt-3.5-turbo")
         template = get_object_or_404(ProductTemplate, pk=templateID)
         meta_fields = template._meta.fields
         fields = [str(field).split('.')[-1] for field in meta_fields if str(field).split('.')[-1] not in ['store', 'template_name', 'id', 'additional_product_info']]
@@ -297,7 +213,7 @@ def update_products(request):
             for field in fields:
                 if getattr(template, field):
                     data[field] = {"old":full_product[field], "prompt": getattr(template, field)}
-            ai_data_response = get_AI_product_data(request, data=data)
+            ai_data_response = get_AI_product_data(request, model, data=data)
             if ai_data_response.status_code != 200:
                 return JsonResponse({'error': 'Failed to updated product with AI'}, status=500)
             ai_data = json.loads(ai_data_response.content.decode('utf-8'))
@@ -313,7 +229,7 @@ def update_products(request):
                     headers=big_commerce_headers(store.access_token),
                     json=product)
                 different_values = {key:[value,res.json()['data'][key]] for [key, value] in product.items() if value != res.json()['data'][key]}
-                print('New Values: ', different_values)
+                #print('New Values: ', different_values)
 
             except Exception as e:
                 logger.exception(f"An error occurred when trying to update product {product['id']} in update_products: {e}")
@@ -339,25 +255,23 @@ def get_brands(request):
         logger.exception(f"An error occurred in get_brands: {e}")
         return HttpResponse("An internal error occurred.", status=500)
 
-def get_AI_product_data(request, data=None):
+def get_AI_product_data(request, model="gpt-3.5-turbo", data=None):
     try:
         store = Store.objects.filter(access_token=request.session.get("access_token", None)).first()
         if store is None:
             return JsonResponse({"response": "Not logged in!"})
+        print('Store PK: ', store.pk)
         if not data:
             data = json.loads(request.GET.get("data"))
-        model = "gpt-3.5-turbo"
         key=os.environ.get("CHATGPT_API_KEY", "")
         if not key:
             logger.error("OpenAI API key not found in environment.")
             return HttpResponse("Internal Server Error", status=500)
         system_prompt = """
-                        You are an experienced E-Commerce copywriter. Your task is to provide improved product attributes using the given data. 
-                        You should generate "new" data based on the "old" data, the provided "prompt", and the "additional_product_info". 
-                        Your output should be an object with one less key than the input, excluding the "additional_product_info" key. 
-                        Additionally, your output should be in proper JSON format.
+                        You are an experienced E-Commerce copywriter. Provide improved product data using the given data. 
+                        Generate "new" data from "old" data, provided "prompt", and "additional_product_info". 
+                        Return proper JSON formatted object with one less key than input, removing "additional_product_info" key. 
                 
-                        
         Example Input 1: {"name": {"old": old name, "prompt": "create an improved product name"}, 
                         "description": {"old": old description, "prompt": "create an improved description"},
                         "page_title": {"old": old page title, "prompt": "create an improved page title"},
@@ -431,12 +345,15 @@ def product_template(request, templateID = None):
         content = json.loads(request.body)
         template_id = content.pop("template_id")
         updated_template = ProductTemplate.objects.filter(id=template_id).update(**content)
-        print('Template ID: ', templateID)
-        print('CONTENT FOR PUT: ', content)
-        print('Updated Content: ', updated_template)
         return JsonResponse({"message": "Template Updated"})
         
     elif request.method == "DELETE":
         template_id = content.pop("template_id")
         ProductTemplate.objects.filter(id=template_id).delete()
         return JsonResponse({"message": "Product Template Deleted"})
+    
+def check_premium(request):
+    store = Store.objects.filter(access_token=request.session.get("access_token", None)).first()
+    if store is None:
+        return JsonResponse({"response":"Not logged in!"})
+    return JsonResponse({"premium": store.premium})

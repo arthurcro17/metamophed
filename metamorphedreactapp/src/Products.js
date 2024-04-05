@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import Form from 'react-bootstrap/Form';
 import Alert from 'react-bootstrap/Alert';
 import MultiSelect from 'multiselect-react-dropdown';
+import Switch from 'react-bootstrap/Switch'
 
 function Products() {
     const [products, setProducts] = useState({})
@@ -16,7 +17,6 @@ function Products() {
     const [loadingCategories, setLoadingCategories] = useState(true)
     const [loadingBrands, setLoadingBrands] = useState(true)
     const [brands, setBrands] = useState({})
-
     const [filtersApplied, setFiltersApplied] = useState(false)
     const [isBrandDropdownOpen, setIsBrandDropdownOpen] = useState(false)
     const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
@@ -34,6 +34,8 @@ function Products() {
     const [saveMessage, setSaveMessage] = useState('')
     const [saveMessageVariant, setSaveMessageVariant] = useState('')
     const [isStickyTabShown, setIsStickyTabShown] = useState(true)
+    const [isPremium, setIsPremium] = useState(false)
+    const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo')
 
     /*
 
@@ -104,11 +106,25 @@ function Products() {
         }
     }
 
+    async function checkPremium() {
+        const url = `${process.env.REACT_APP_BACKEND}/check_premium/`
+        const fetchConfig = {
+            credentials: "include",
+            method: "GET",
+        }
+        const response = await fetch(url, fetchConfig)
+        if (response.ok) {
+            const data = await response.json()
+            setIsPremium(data['premium'])
+        }
+    }
+
     useEffect(() => {
         getProducts()
         getCategories()
         getBrands()
         getTemplates()
+        checkPremium()
     }, []);
 
     useEffect(() => {
@@ -128,6 +144,8 @@ function Products() {
     if (Object.keys(products).length === 0) {
         return <div>No Products</div>
     }
+
+
 
     /*
 
@@ -452,6 +470,25 @@ Here are the functions for selecting and applying a template to the products
         )
     }
 
+    function ModelToggle() {
+        const handleChange = (e) => {
+            const checked = e.target.checked
+            if (!isPremium) {
+                alert('GPT-4 is only available to premium stores.')
+                return
+            }
+            setSelectedModel(checked ? 'gpt-4-turbo' : 'gpt-3.5-turbo')
+            
+        }
+        return (
+            <div className="model-toggle">
+                <span>GPT 3.5</span>
+                <Switch checked={selectedModel==='gpt-4-turbo'} onChange={handleChange} />
+                <span>GPT 4</span>
+            </div>
+        )      
+    }
+
     const toggleTab = () => {
         setIsStickyTabShown(!isStickyTabShown)
     }
@@ -533,12 +570,13 @@ Here are the functions for selecting and applying a template to the products
     return (
         <Container>
             <div className="top-section">
-                <Row>
-                    <TemplateEditor/>
-                    <Col className="title">
-                        <h1>MetaMorphed</h1>
-                    </Col>
-                </Row>
+                <TemplateEditor/>
+                <Col className="title">
+                    <h1>MetaMorphed</h1>
+                </Col>
+                <div className="model-toggle-container"> 
+                    <ModelToggle/>
+                </div>
             </div>
             <Row>
                 <Col style={{textAlign:'right'}}>
